@@ -25,7 +25,7 @@ path.resolve(destDirPath).split(path.sep).reduce((before, cur) => {
   }
   return path.join(before, cur + path.sep);
 }, '');
-let indexJsExportAll = '';
+let indexJsExportAll = [];
 
 /**
  * Compile arguments dictionary for a field
@@ -151,7 +151,7 @@ const generateQuery = (
  * @param description description of the current object
  */
 const generateFile = (obj, description) => {
-  let indexJs = 'const fs = require(\'fs\');\nconst path = require(\'path\');\n\n';
+
   let outputFolderName;
   switch (description) {
     case 'Mutation':
@@ -166,6 +166,7 @@ const generateFile = (obj, description) => {
     default:
       console.log('[gqlg warning]:', 'description is required');
   }
+  let indexJs = `// ${outputFolderName}\n`;
   const writeFolder = path.join(destDirPath, `./${outputFolderName}`);
   try {
     fs.mkdirSync(writeFolder);
@@ -181,11 +182,11 @@ const generateFile = (obj, description) => {
       let query = queryResult.queryStr;
       query = `${description.toLowerCase()} ${type}${varsToTypesStr ? `(${varsToTypesStr})` : ''}{\n${query}\n}`;
       fs.writeFileSync(path.join(writeFolder, `./${type}.gql`), query);
-      indexJs += `module.exports.${type} = fs.readFileSync(path.join(__dirname, '${type}.gql'), 'utf8');\n`;
+      indexJs +=`export * as ${type} from './${outputFolderName}/${type}.gql'\n`;
     }
   });
-  fs.writeFileSync(path.join(writeFolder, 'index.js'), indexJs);
-  indexJsExportAll += `module.exports.${outputFolderName} = require('./${outputFolderName}');\n`;
+  // fs.writeFileSync(path.join(writeFolder, 'index.js'), indexJs);
+  indexJsExportAll.push(indexJs);
 };
 
 if (gqlSchema.getMutationType()) {
@@ -206,4 +207,4 @@ if (gqlSchema.getSubscriptionType()) {
   console.log('[gqlg warning]:', 'No subscription type found in your schema');
 }
 
-fs.writeFileSync(path.join(destDirPath, 'index.js'), indexJsExportAll);
+fs.writeFileSync(path.join(destDirPath, 'index.js'), indexJsExportAll.join('\n'));
